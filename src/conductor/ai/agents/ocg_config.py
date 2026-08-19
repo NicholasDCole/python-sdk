@@ -17,9 +17,10 @@ class OcgConfig:
     """Configure Conductor-managed OCG integration for an agent.
 
     ``credential`` is the name of a Conductor secret. Raw API keys are not
-    accepted or stored by this configuration. ``memory`` controls the
-    server-managed long-term-memory lifecycle. Context-search tools can use
-    this configuration whether memory is enabled or not.
+    accepted or stored by this configuration. ``memory`` enables the
+    server-managed long-term-memory recall and capture lifecycle.
+    The connection can also be passed to :func:`ocg_context_search` when an
+    agent explicitly declares the server-managed OCG research specialist.
     """
 
     url: str
@@ -49,9 +50,7 @@ class OcgConfig:
             "validate",
             "trust_and_terminate",
         ):
-            raise ValueError(
-                "OcgConfig recall_policy must be 'validate' or 'trust_and_terminate'"
-            )
+            raise ValueError("OcgConfig recall_policy must be 'validate' or 'trust_and_terminate'")
 
         normalized_instructions = None
         if self.recall_instructions is not None:
@@ -62,18 +61,14 @@ class OcgConfig:
                 raise ValueError("OcgConfig recall_instructions must be a non-empty string")
 
         if self.recall_policy is not None and normalized_instructions is not None:
-            raise ValueError(
-                "OcgConfig accepts only one of recall_policy or recall_instructions"
-            )
+            raise ValueError("OcgConfig accepts only one of recall_policy or recall_instructions")
 
         if not self.memory and (
             self.user is not None
             or self.recall_policy is not None
             or normalized_instructions is not None
         ):
-            raise ValueError(
-                "OcgConfig recall options require memory=True"
-            )
+            raise ValueError("OcgConfig recall options require memory=True")
 
         if self.memory and self.recall_policy is None and normalized_instructions is None:
             object.__setattr__(self, "recall_policy", "validate")

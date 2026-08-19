@@ -131,8 +131,6 @@ class AgentConfigSerializer:
         if hasattr(agent, "memory") and agent.memory:
             config["memory"] = self._serialize_memory(agent.memory)
 
-        # OCG behavior is server-managed. The SDK only supplies configuration
-        # metadata and never performs local retrieval or post-run processing.
         if agent.ocg is not None and agent.ocg.memory:
             long_term_memory: Dict[str, Any] = {
                 "ocgUrl": agent.ocg.url,

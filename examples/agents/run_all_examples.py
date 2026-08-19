@@ -80,7 +80,7 @@ INFRA_SKIP = {
     "16f_credentials_mcp_tool.py": "needs an MCP server",
     "97_openai_runner_sandbox.py": "needs a Docker sandbox",
     "61a_github_coding_agent_claude_code.py": "needs the claude-code-sdk package",
-    "116_ocg_subagent.py": "needs an OCG instance (OCG_INSTANCE_URL)",
+    "116_ocg_context_search.py": "needs an OCG instance (OCG_INSTANCE_URL)",
     "117_ocg_direct_tools.py": "needs an OCG instance (OCG_INSTANCE_URL)",
     "100_issue_fixer_agent.py": "requires CLI arguments",
     "70_ce_support_agent.py": "requires CLI arguments (ticket id)",

@@ -13,13 +13,26 @@ def test_creates_server_managed_ocg_context_search_capability():
         )
     )
 
-    assert capability.name == "ocg"
-    assert capability.tool_type == "ocg"
+    assert capability.name == "ocg_research"
+    assert capability.description == (
+        "Research the OCG knowledge graph for the requested information."
+    )
+    assert capability.tool_type == "ocg_research"
     assert capability.config == {
         "ocg_url": "https://ocg.example.com",
         "credential": "OCG_SEARCH_KEY",
     }
     assert capability.credentials == ["OCG_SEARCH_KEY"]
+    assert capability.input_schema == {
+        "type": "object",
+        "properties": {
+            "request": {
+                "type": "string",
+                "description": "The issue analysis and specific information to research in OCG.",
+            }
+        },
+        "required": ["request"],
+    }
 
 
 def test_requires_ocg_configuration():

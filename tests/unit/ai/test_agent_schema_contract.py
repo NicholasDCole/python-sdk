@@ -8,7 +8,7 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from conductor.ai.agents import OcgConfig
+from conductor.ai.agents import OcgConfig, ocg_context_search
 from conductor.ai.agents.agent import Agent
 from conductor.ai.agents.config_serializer import AgentConfigSerializer
 from conductor.ai.agents.guardrail import RegexGuardrail
@@ -33,7 +33,7 @@ def test_agent_schema_is_valid_and_accepts_representative_serializer_output():
         name="schema_root",
         model="openai/gpt-4o-mini",
         instructions="Return a concise answer.",
-        tools=[_schema_tool],
+        tools=[_schema_tool, ocg_context_search(OcgConfig(url="https://ocg.example.com"))],
         agents=[Agent(name="schema_child", model="openai/gpt-4o-mini")],
         strategy="handoff",
         guardrails=[RegexGuardrail(name="safe", patterns=[".*"])],
@@ -51,3 +51,11 @@ def test_agent_schema_rejects_unknown_root_fields():
     schema = json.loads(SCHEMA_PATH.read_text())
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate({"name": "valid_name", "unknownField": True}, schema)
+
+
+def test_agent_schema_rejects_removed_root_ocg_configuration():
+    schema = json.loads(SCHEMA_PATH.read_text())
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(
+            {"name": "valid_name", "ocg": {"contextSearch": True}}, schema
+        )

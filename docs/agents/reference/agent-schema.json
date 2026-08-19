@@ -26,8 +26,23 @@
         "ocgUrl": { "type": "string", "minLength": 1 },
         "credential": { "type": "string", "minLength": 1 },
         "agent": { "type": "string", "minLength": 1 },
-        "user": { "type": "string" }
+        "user": { "type": "string" },
+        "recallPolicy": {
+          "type": "string",
+          "enum": ["validate", "trust_and_terminate"]
+        },
+        "recallInstructions": { "type": "string", "minLength": 1 }
       },
+      "oneOf": [
+        {
+          "required": ["recallPolicy"],
+          "not": { "required": ["recallInstructions"] }
+        },
+        {
+          "required": ["recallInstructions"],
+          "not": { "required": ["recallPolicy"] }
+        }
+      ],
       "additionalProperties": false
     },
     "tool": {

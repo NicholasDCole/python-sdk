@@ -2,7 +2,7 @@
 
 import pytest
 
-from conductor.ai.agents import Agent, OcgConfig
+from conductor.ai.agents import Agent, OcgConfig, ocg_context_search
 from conductor.ai.agents.config_serializer import AgentConfigSerializer
 
 
@@ -13,6 +13,7 @@ def serialize(agent: Agent) -> dict:
 def test_ocg_absent_omits_long_term_memory():
     config = serialize(Agent(name="assistant", model="openai/gpt-4o"))
 
+    assert "ocg" not in config
     assert "longTermMemory" not in config
 
 
@@ -112,9 +113,7 @@ def test_ocg_rejects_empty_credential(credential):
 
 def test_ocg_does_not_accept_raw_api_key_parameter():
     with pytest.raises(TypeError):
-        OcgConfig(
-            url="https://ocg.example.com", memory=True, api_key="raw-secret"
-        )
+        OcgConfig(url="https://ocg.example.com", memory=True, api_key="raw-secret")
 
 
 def test_ocg_emits_no_legacy_feedback_worker_or_config():
@@ -138,7 +137,7 @@ def test_ocg_memory_defaults_to_validate_recall():
     assert ocg.recall_policy == "validate"
 
 
-def test_context_search_only_ocg_omits_long_term_memory():
+def test_memory_disabled_omits_long_term_memory():
     config = serialize(
         Agent(
             name="assistant",
@@ -148,11 +147,71 @@ def test_context_search_only_ocg_omits_long_term_memory():
     )
 
     assert "longTermMemory" not in config
+    assert "ocg" not in config
+
+
+def test_explicit_research_without_memory_omits_long_term_memory():
+    ocg = OcgConfig(url="https://ocg.example.com")
+
+    config = serialize(
+        Agent(
+            name="assistant",
+            model="openai/gpt-4o",
+            ocg=ocg,
+            tools=[ocg_context_search(ocg)],
+        )
+    )
+
+    assert "longTermMemory" not in config
+    assert [tool["name"] for tool in config["tools"]] == ["ocg_research"]
+
+
+def test_memory_and_explicit_research_serialize_independently():
+    ocg = OcgConfig(url="https://ocg.example.com", credential="OCG_SEARCH_KEY", memory=True)
+
+    config = serialize(
+        Agent(
+            name="assistant",
+            model="openai/gpt-4o",
+            ocg=ocg,
+            tools=[ocg_context_search(ocg)],
+        )
+    )
+
+    assert config["longTermMemory"]["ocgUrl"] == "https://ocg.example.com"
+    assert "ocg" not in config
+    assert config["tools"] == [
+        {
+            "name": "ocg_research",
+            "description": "Research the OCG knowledge graph for the requested information.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "request": {
+                        "type": "string",
+                        "description": "The issue analysis and specific information to research in OCG.",
+                    }
+                },
+                "required": ["request"],
+            },
+            "toolType": "ocg_research",
+            "config": {
+                "ocg_url": "https://ocg.example.com",
+                "credential": "OCG_SEARCH_KEY",
+                "credentials": ["OCG_SEARCH_KEY"],
+            },
+        }
+    ]
 
 
 def test_recall_options_require_memory_to_be_enabled():
     with pytest.raises(ValueError, match="memory=True"):
         OcgConfig(url="https://ocg.example.com", recall_policy="validate")
+
+
+def test_ocg_rejects_removed_context_search_option():
+    with pytest.raises(TypeError, match="context_search"):
+        OcgConfig(url="https://ocg.example.com", context_search=True)  # type: ignore[call-arg]
 
 
 def test_ocg_rejects_both_recall_configurations():
