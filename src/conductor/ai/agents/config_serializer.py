@@ -133,7 +133,7 @@ class AgentConfigSerializer:
 
         # OCG behavior is server-managed. The SDK only supplies configuration
         # metadata and never performs local retrieval or post-run processing.
-        if agent.ocg is not None:
+        if agent.ocg is not None and agent.ocg.memory:
             long_term_memory: Dict[str, Any] = {
                 "ocgUrl": agent.ocg.url,
                 "credential": agent.ocg.credential,
@@ -141,6 +141,10 @@ class AgentConfigSerializer:
             }
             if agent.ocg.user is not None:
                 long_term_memory["user"] = agent.ocg.user
+            if agent.ocg.recall_policy is not None:
+                long_term_memory["recallPolicy"] = agent.ocg.recall_policy
+            if agent.ocg.recall_instructions is not None:
+                long_term_memory["recallInstructions"] = agent.ocg.recall_instructions
             config["longTermMemory"] = long_term_memory
 
         # Max tokens

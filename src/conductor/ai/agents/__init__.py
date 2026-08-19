@@ -176,6 +176,9 @@ def resolve_credentials(task: object, names: list) -> dict:
 # Agent discovery
 # OCG configuration
 from conductor.ai.agents.ocg_config import OcgConfig
+from conductor.ai.agents.ocg_context_search import (
+    ocg_context_search,
+)
 
 # OpenAI Agents SDK compatibility
 from conductor.ai.agents.openai_compat import Runner, RunResult
@@ -259,6 +262,7 @@ __all__ = [
     "http_tool",
     # OCG configuration
     "OcgConfig",
+    "ocg_context_search",
     "human_tool",
     "mcp_tool",
     "wait_for_message_tool",

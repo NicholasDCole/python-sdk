@@ -38,7 +38,7 @@ def test_agent_schema_is_valid_and_accepts_representative_serializer_output():
         strategy="handoff",
         guardrails=[RegexGuardrail(name="safe", patterns=[".*"])],
         termination=TextMentionTermination(text="DONE"),
-        ocg=OcgConfig(url="https://ocg.example.com"),
+        ocg=OcgConfig(url="https://ocg.example.com", memory=True),
         metadata={"owner": "docs"},
         max_tokens=100,
         temperature=0.1,
