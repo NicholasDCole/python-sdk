@@ -8,28 +8,29 @@ runtime policy. Important fields include `strategy`, `max_turns`, `max_tokens`,
 
 ## Managed OCG
 
-`memory=True` enables long-term-memory recall and capture. To make OCG research
-available to an agent, explicitly add `ocg_context_search(ocg)` to its tools.
-The resulting `ocg_research` tool is a server-managed research sub-agent, not a
-raw graph or MCP tool. This lets application instructions control when research
-runs and what request it receives.
+Configure managed OCG context search directly on the agent; it does not need an
+OCG tool declaration. `memory=True` enables long-term-memory recall and capture,
+while `context_search=True` enables the server-managed OCG research sub-agent.
+They can use the same OCG URL and credential together or independently.
 
 ```python
-from conductor.ai.agents import Agent, OcgConfig, ocg_context_search
-
-ocg = OcgConfig(
-    url="https://ocg.example",
-    credential="OCG_PUBLIC_KEY",
-    memory=True,
-)
+from conductor.ai.agents import Agent, OcgConfig
 
 agent = Agent(
     name="incident_agent",
     model="openai/gpt-4o",
-    ocg=ocg,
-    tools=[ocg_context_search(ocg)],
+    ocg=OcgConfig(
+        url="https://ocg.example",
+        credential="OCG_PUBLIC_KEY",
+        memory=True,
+        context_search=True,
+    ),
 )
 ```
+
+`ocg_context_search(ocg)` remains available temporarily for backwards
+compatibility, but is deprecated. Use `OcgConfig(context_search=True)` for new
+agents.
 
 Names must match `^[a-zA-Z_][a-zA-Z0-9_-]*$`. Empty models represent inherited or
 external-agent behavior. The complete constructor and serialization semantics are

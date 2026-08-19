@@ -19,13 +19,14 @@ class OcgConfig:
     ``credential`` is the name of a Conductor secret. Raw API keys are not
     accepted or stored by this configuration. ``memory`` enables the
     server-managed long-term-memory recall and capture lifecycle.
-    The connection can also be passed to :func:`ocg_context_search` when an
-    agent explicitly declares the server-managed OCG research specialist.
+    ``context_search`` enables a server-managed OCG research sub-agent. Both
+    capabilities can be enabled together.
     """
 
     url: str
     credential: str = "OCG_PUBLIC_KEY"
     memory: bool = False
+    context_search: bool = False
     user: Optional[str] = None
     recall_policy: Optional[RecallPolicy] = None
     recall_instructions: Optional[str] = None
@@ -45,6 +46,9 @@ class OcgConfig:
 
         if not isinstance(self.memory, bool):
             raise ValueError("OcgConfig memory must be a boolean")
+
+        if not isinstance(self.context_search, bool):
+            raise ValueError("OcgConfig context_search must be a boolean")
 
         if self.recall_policy is not None and self.recall_policy not in (
             "validate",

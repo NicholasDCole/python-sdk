@@ -9,6 +9,10 @@ from conductor.ai.agents.tool import ToolDef
 def ocg_context_search(ocg: OcgConfig) -> ToolDef:
     """Create the server-managed OCG research-agent tool.
 
+    Deprecated:
+        Configure ``Agent(ocg=OcgConfig(..., context_search=True))`` instead.
+        This compatibility helper will be removed in a future release.
+
     The tool accepts a required ``request`` message. Conductor materializes a
     bounded, server-owned research child and keeps raw OCG graph operations
     internal to that child. ``ocg.memory`` is independent: it applies only

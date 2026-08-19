@@ -2,7 +2,7 @@
 
 import pytest
 
-from conductor.ai.agents import Agent, OcgConfig, ocg_context_search
+from conductor.ai.agents import Agent, OcgConfig
 from conductor.ai.agents.config_serializer import AgentConfigSerializer
 
 
@@ -147,61 +147,56 @@ def test_memory_disabled_omits_long_term_memory():
     )
 
     assert "longTermMemory" not in config
-    assert "ocg" not in config
+    assert config["ocg"] == {
+        "url": "https://ocg.example.com",
+        "credential": "OCG_PUBLIC_KEY",
+    }
 
 
-def test_explicit_research_without_memory_omits_long_term_memory():
-    ocg = OcgConfig(url="https://ocg.example.com")
-
+def test_context_search_without_memory_serializes_top_level_ocg():
     config = serialize(
         Agent(
             name="assistant",
             model="openai/gpt-4o",
-            ocg=ocg,
-            tools=[ocg_context_search(ocg)],
+            ocg=OcgConfig(
+                url="https://ocg.example.com",
+                credential="OCG_SEARCH_KEY",
+                context_search=True,
+            ),
         )
     )
 
+    assert config["ocg"] == {
+        "url": "https://ocg.example.com",
+        "credential": "OCG_SEARCH_KEY",
+        "contextSearch": True,
+    }
     assert "longTermMemory" not in config
-    assert [tool["name"] for tool in config["tools"]] == ["ocg_research"]
+    assert "tools" not in config
 
 
-def test_memory_and_explicit_research_serialize_independently():
-    ocg = OcgConfig(url="https://ocg.example.com", credential="OCG_SEARCH_KEY", memory=True)
-
+def test_context_search_and_memory_serialize_independently():
     config = serialize(
         Agent(
             name="assistant",
             model="openai/gpt-4o",
-            ocg=ocg,
-            tools=[ocg_context_search(ocg)],
+            ocg=OcgConfig(
+                url="https://ocg.example.com",
+                credential="OCG_SEARCH_KEY",
+                memory=True,
+                context_search=True,
+            ),
         )
     )
 
+    assert config["ocg"] == {
+        "url": "https://ocg.example.com",
+        "credential": "OCG_SEARCH_KEY",
+        "contextSearch": True,
+    }
     assert config["longTermMemory"]["ocgUrl"] == "https://ocg.example.com"
-    assert "ocg" not in config
-    assert config["tools"] == [
-        {
-            "name": "ocg_research",
-            "description": "Research the OCG knowledge graph for the requested information.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "request": {
-                        "type": "string",
-                        "description": "The issue analysis and specific information to research in OCG.",
-                    }
-                },
-                "required": ["request"],
-            },
-            "toolType": "ocg_research",
-            "config": {
-                "ocg_url": "https://ocg.example.com",
-                "credential": "OCG_SEARCH_KEY",
-                "credentials": ["OCG_SEARCH_KEY"],
-            },
-        }
-    ]
+    assert config["longTermMemory"]["credential"] == "OCG_SEARCH_KEY"
+    assert "tools" not in config
 
 
 def test_recall_options_require_memory_to_be_enabled():
@@ -209,9 +204,21 @@ def test_recall_options_require_memory_to_be_enabled():
         OcgConfig(url="https://ocg.example.com", recall_policy="validate")
 
 
-def test_ocg_rejects_removed_context_search_option():
-    with pytest.raises(TypeError, match="context_search"):
-        OcgConfig(url="https://ocg.example.com", context_search=True)  # type: ignore[call-arg]
+def test_context_search_false_omits_context_search_field():
+    config = serialize(
+        Agent(
+            name="assistant",
+            model="openai/gpt-4o",
+            ocg=OcgConfig(url="https://ocg.example.com", context_search=False),
+        )
+    )
+
+    assert "contextSearch" not in config["ocg"]
+
+
+def test_ocg_rejects_non_boolean_context_search():
+    with pytest.raises(ValueError, match="context_search must be a boolean"):
+        OcgConfig(url="https://ocg.example.com", context_search="yes")  # type: ignore[arg-type]
 
 
 def test_ocg_rejects_both_recall_configurations():

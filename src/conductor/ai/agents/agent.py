@@ -502,9 +502,8 @@ class Agent:
         output_type: A Pydantic model or dataclass for structured output.
         guardrails: List of :class:`Guardrail` instances for input/output validation.
         memory: Optional :class:`ConversationMemory` for session management.
-        ocg: Optional :class:`OcgConfig` for Conductor-managed long-term memory.
-            Add ``ocg_context_search(ocg)`` to ``tools`` to explicitly enable
-            the server-managed OCG research agent.
+        ocg: Optional :class:`OcgConfig` for Conductor-managed OCG context search
+            and long-term memory.
         dependencies: Optional dict of dependencies to inject into tool context.
         max_turns: Maximum agent loop iterations (default 25).
         max_tokens: Maximum tokens for LLM generation.

@@ -45,6 +45,16 @@
       ],
       "additionalProperties": false
     },
+    "ocg": {
+      "type": "object",
+      "required": ["url", "credential"],
+      "properties": {
+        "url": { "type": "string", "minLength": 1 },
+        "credential": { "type": "string", "minLength": 1 },
+        "contextSearch": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
     "tool": {
       "type": "object",
       "required": ["name"],
@@ -78,6 +88,7 @@
         "outputType": { "type": "object" },
         "guardrails": { "type": "array", "items": { "type": "object" } },
         "memory": { "type": "object" },
+        "ocg": { "$ref": "#/$defs/ocg" },
         "longTermMemory": { "$ref": "#/$defs/longTermMemory" },
         "maxTokens": { "type": "integer", "minimum": 0 },
         "contextWindowBudget": { "type": "integer", "minimum": 0 },
