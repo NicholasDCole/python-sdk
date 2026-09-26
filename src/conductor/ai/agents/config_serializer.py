@@ -40,12 +40,14 @@ class AgentConfigSerializer:
 
         if isinstance(agent, AgentDef):
             agent = _resolve_agent(agent)
-        if getattr(agent, "kind", None) == "jev":
+        if getattr(agent, "kind", None) in ("decision", "jev"):
             if agent.tools or agent.agents or agent.memory or agent.guardrails or agent.output_type:
                 raise ValueError(
-                    "Jev agents cannot contain chat tools, agents, memory, output schemas or guardrails"
+                    "Decision agents cannot contain chat tools, agents, memory, output schemas or guardrails"
                 )
-            config = {"name": agent.name, "kind": "jev", "model": agent.model}
+            config = {"name": agent.name, "kind": "decision", "model": agent.model}
+            if getattr(agent, "provider", None) is not None:
+                config["provider"] = agent.provider
             if agent.questions is not None:
                 config["questions"] = agent.questions
             if agent.metadata:

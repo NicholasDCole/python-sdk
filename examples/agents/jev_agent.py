@@ -4,14 +4,14 @@ import argparse
 import json
 import os
 
-from conductor.ai.agents import AgentRuntime, JevAgent
+from conductor.ai.agents import AgentRuntime, DecisionAgent
 from conductor.client.configuration.configuration import Configuration
 
 PROMPT = "The customer reports a duplicate charge on the latest invoice."
 
 
 def support_agent():
-    return JevAgent(
+    return DecisionAgent(
         name="jev_support_agent",
         model="jev-1.13",
         questions={

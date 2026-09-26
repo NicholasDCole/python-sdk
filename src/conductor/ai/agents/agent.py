@@ -75,8 +75,8 @@ class AgentDef:
         name: Agent name (becomes the Conductor workflow name).
         model: LLM model in ``"provider/model"`` format.  Empty string
             means "inherit from parent agent at resolution time".
-        kind: Set to "jev" for a Jev agent. Omit for chat agents.
-        questions: Fixed Jev questions, or omit and supply context.questions at runtime.
+        kind: Set to "decision" for a decision agent. Omit for chat agents.
+        questions: Fixed decision questions, or omit and supply context.questions at runtime.
         instructions: System prompt — a string or the decorated callable.
         tools: List of tools for the agent.
         guardrails: List of guardrails for the agent.
@@ -113,6 +113,7 @@ class AgentDef:
     prefill_tools: List[Any] = field(default_factory=list)
     kind: Optional[str] = None
     questions: Optional[Dict[str, Any]] = None
+    provider: Optional[str] = None
 
 
 # ── @agent decorator ────────────────────────────────────────────────────
@@ -225,8 +226,8 @@ def _resolve_agent(obj: Any, parent_model: str = "") -> "Agent":
         return obj
     if isinstance(obj, AgentDef) or (callable(obj) and hasattr(obj, "_agent_def")):
         ad: AgentDef = obj if isinstance(obj, AgentDef) else obj._agent_def
-        if ad.kind == "jev":
-            from conductor.ai.agents.jev import JevAgent
+        if ad.kind in ("decision", "jev"):
+            from conductor.ai.agents.decision import DecisionAgent
 
             if (
                 ad.tools
@@ -242,8 +243,14 @@ def _resolve_agent(obj: Any, parent_model: str = "") -> "Agent":
                 or ad.max_tokens is not None
                 or ad.temperature is not None
             ):
-                raise ValueError("Jev AgentDef does not support chat configuration")
-            return JevAgent(ad.name, model=ad.model, questions=ad.questions, metadata=ad.metadata)
+                raise ValueError("Decision AgentDef does not support chat configuration")
+            return DecisionAgent(
+                ad.name,
+                model=ad.model,
+                provider=ad.provider,
+                questions=ad.questions,
+                metadata=ad.metadata,
+            )
         if ad.kind is not None:
             raise ValueError(f"Unsupported agent kind: {ad.kind}")
         # Handle ClaudeCode: don't inherit parent model for claude-code agents
@@ -944,7 +951,8 @@ class Agent:
         ROUTER with a Jev selector, which is compiled locally by the server.
         """
         return not self.model and not (
-            self.strategy == Strategy.ROUTER and getattr(self.router, "kind", None) == "jev"
+            self.strategy == Strategy.ROUTER
+            and getattr(self.router, "kind", None) in ("decision", "jev")
         )
 
     # ── Instance-method resolution ──────────────────────────────────────

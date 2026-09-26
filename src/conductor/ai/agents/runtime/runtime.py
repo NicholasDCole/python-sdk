@@ -292,6 +292,7 @@ _TOOL_TASK_TYPES = frozenset(
 _NON_TOOL_TASK_TYPES = frozenset(
     {
         "LLM_CHAT_COMPLETE",
+        "DECISION_AGENT",
         "JEV_AGENT",
         "SWITCH",
         "DO_WHILE",
@@ -441,9 +442,9 @@ def _task_events(task: Any, execution_id: str) -> Iterator[AgentEvent]:
     task_status = str(getattr(task, "status", "") or "").upper()
     output_data = getattr(task, "output_data", None) or {}
 
-    if task_type == "JEV_AGENT" and task_status == "COMPLETED":
+    if task_type in ("DECISION_AGENT", "JEV_AGENT") and task_status == "COMPLETED":
         yield AgentEvent(
-            type=EventType.JEV,
+            type=EventType.DECISION,
             content=task_ref,
             result=output_data,
             execution_id=execution_id,
@@ -1721,8 +1722,7 @@ class AgentRuntime:
         )(gate_worker)
 
     def _register_callback_worker(
-        self, agent_name: str, position: str, handlers, legacy_fn,
-        domain: "Optional[str]" = None
+        self, agent_name: str, position: str, handlers, legacy_fn, domain: "Optional[str]" = None
     ) -> None:
         """Register a before_model or after_model callback worker.
 
@@ -2246,7 +2246,11 @@ class AgentRuntime:
         def _collect(a: Agent) -> None:
             if not isinstance(a, Agent):
                 return
-            if a.model and a.model not in seen and getattr(a, "kind", None) != "jev":
+            if (
+                a.model
+                and a.model not in seen
+                and getattr(a, "kind", None) not in ("decision", "jev")
+            ):
                 seen.add(a.model)
             for sub in a.agents:
                 _collect(sub)
@@ -3440,9 +3444,7 @@ class AgentRuntime:
             elif llm_role == "prep" and llm_var_name:
                 wrapped = GraphWorkerEntry("make_llm_prep_worker", w.func, w.name, llm_var_name)
             elif llm_role == "finish" and llm_var_name:
-                wrapped = GraphWorkerEntry(
-                    "make_llm_finish_worker", w.func, w.name, llm_var_name
-                )
+                wrapped = GraphWorkerEntry("make_llm_finish_worker", w.func, w.name, llm_var_name)
             elif w.name in router_refs:
                 is_dynamic = extra.get("is_dynamic_fanout", False)
                 wrapped = GraphWorkerEntry(
@@ -3787,7 +3789,7 @@ class AgentRuntime:
             return None
 
         return AgentEvent(
-            type=event_type,
+            type="decision" if event_type == "jev" else event_type,
             content=data.get("content"),
             tool_name=data.get("toolName"),
             args=data.get("args"),
@@ -5174,8 +5176,10 @@ class AgentRuntime:
         try:
             # Reuse the passed workflow when it already carries tasks;
             # otherwise fetch the full execution for enrichment.
-            full = wf if getattr(wf, "tasks", None) else self._workflow_client.get_workflow(
-                execution_id, include_tasks=True
+            full = (
+                wf
+                if getattr(wf, "tasks", None)
+                else self._workflow_client.get_workflow(execution_id, include_tasks=True)
             )
             tool_calls = self._extract_tool_calls(full)
             messages = self._extract_messages(full)

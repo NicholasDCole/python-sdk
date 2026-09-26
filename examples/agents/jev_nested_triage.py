@@ -7,7 +7,7 @@ import argparse
 import json
 import os
 
-from conductor.ai.agents import Agent, AgentRuntime, JevAgent, Strategy
+from conductor.ai.agents import Agent, AgentRuntime, DecisionAgent, Strategy
 from conductor.client.configuration.configuration import Configuration
 from jev_specialists import SPECIALTIES, specialists
 
@@ -18,7 +18,7 @@ def routing_team(name, children, descriptions):
     return Agent(
         name=name,
         strategy=Strategy.ROUTER,
-        router=JevAgent(
+        router=DecisionAgent(
             name=f"{name}_selector",
             model="jev-1.13",
             questions={

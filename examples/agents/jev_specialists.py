@@ -1,6 +1,6 @@
 """Ten Jev specialists used by the routing examples."""
 
-from conductor.ai.agents import JevAgent
+from conductor.ai.agents import DecisionAgent
 
 SPECIALTIES = {
     "duplicate_charge": (
@@ -98,7 +98,7 @@ SPECIALTIES = {
 
 def specialists():
     return {
-        name: JevAgent(
+        name: DecisionAgent(
             name=f"jev_{name}",
             model="jev-1.13",
             questions={

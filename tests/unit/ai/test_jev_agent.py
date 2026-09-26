@@ -24,7 +24,7 @@ def test_agent_def_and_convenience_class_serialize_identically(runtime):
     definition = AgentDef(name="ready", kind="jev", model="jev-1.13", questions=questions)
     expected = {
         "name": "ready",
-        "kind": "jev",
+        "kind": "decision",
         "model": "jev-1.13",
         "questions": {"ready": {"type": "boolean", "instructions": "Ready?"}},
     }
@@ -68,7 +68,7 @@ def test_start_and_poll_preserves_structured_result_and_failure_reason(runtime, 
     handle = runtime.start(definition, "Ready?", context={"questions": QUESTIONS})
     assert handle.execution_id == "execution-1"
     payload = runtime._agent_client.start_agent.call_args.args[0]
-    assert payload["agentConfig"] == {"name": "ready", "kind": "jev", "model": "jev-1.13"}
+    assert payload["agentConfig"] == {"name": "ready", "kind": "decision", "model": "jev-1.13"}
     assert payload["context"]["questions"]["ready"] == {"type": "boolean", "instructions": "Ready?"}
     assert not runtime._workers_started
     with patch("time.sleep"):
@@ -117,7 +117,7 @@ def test_nested_jev_example_routes_to_named_agents(monkeypatch):
     assert len(config["agents"]) == 3
     assert sum(len(team["agents"]) for team in config["agents"]) == 10
     for team in [config, *config["agents"]]:
-        assert team["router"]["kind"] == "jev"
+        assert team["router"]["kind"] == "decision"
         assert set(team["router"]["questions"]["agent"]["choices"]) == {
             child["name"] for child in team["agents"]
         }
@@ -125,6 +125,6 @@ def test_nested_jev_example_routes_to_named_agents(monkeypatch):
     config = serializer.serialize(luna)
     assert config["router"]["model"] == "configured/luna-6"
     assert len(config["agents"]) == 10
-    assert all(child["kind"] == "jev" for child in config["agents"])
+    assert all(child["kind"] == "decision" for child in config["agents"])
     assert config["maxTurns"] == 1
     assert config["synthesize"] is False

@@ -1,23 +1,7 @@
-"""Jev agent definitions. Inference and credentials stay on Conductor."""
+"""Compatibility import; new code should use DecisionAgent."""
 
-from copy import deepcopy
-from typing import Any, Dict, Optional
-
-from conductor.ai.agents.agent import Agent
+from conductor.ai.agents.decision import DecisionAgent
 
 
-class JevAgent(Agent):
-    """Supply questions here or through context.questions at runtime."""
-
-    kind = "jev"
-
-    def __init__(
-        self,
-        name: str,
-        *,
-        model: str,
-        questions: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ):
-        super().__init__(name=name, model=model, metadata=metadata)
-        self.questions = deepcopy(questions)
+class JevAgent(DecisionAgent):
+    """Deprecated name for DecisionAgent; serializes kind="decision"."""

@@ -6,7 +6,7 @@ Chat examples use inline ChatMessage objects for system prompts. No named prompt
 
 ## Prerequisites
 
-The AI decision example requires server-side `AI_DECISION` support and Jev credentials. It needs no chat model or Python worker. The other examples require:
+The AI decision example requires the server-side `AI_DECISION` routing contract below and Decision credentials. No chat model or Python worker is needed. The other examples require:
 
 - Conductor server with AI/LLM support running (e.g., `http://localhost:7001/api`)
 - LLM provider named `openai` configured with a valid API key
@@ -16,7 +16,7 @@ The AI decision example requires server-side `AI_DECISION` support and Jev crede
 
 | Example | Description | Interactive? | Pattern |
 |---------|-------------|:------------:|---------|
-| [ai_decision_routing.py](ai_decision_routing.py) | Route requests and return the selected branch's result | No | AI_DECISION + SwitchTask + InlineTask |
+| [ai_decision_routing.py](ai_decision_routing.py) | Route requests and return the selected branch's result | No | AiDecisionTask with inline branches |
 | [llm_chat.py](llm_chat.py) | Automated multi-turn science Q&A between two LLMs | No | LoopTask + LLM_CHAT_COMPLETE + worker for history |
 | [llm_chat_human_in_loop.py](llm_chat_human_in_loop.py) | Interactive chat with WAIT task pauses for user input | Yes | LoopTask + WaitTask + LLM_CHAT_COMPLETE |
 | [multiagent_chat.py](multiagent_chat.py) | Multi-agent debate with moderator routing between panelists | No | LoopTask + SwitchTask + SetVariableTask + JavaScript routing |
@@ -26,7 +26,7 @@ The AI decision example requires server-side `AI_DECISION` support and Jev crede
 ## Quick Start
 
 ```bash
-# Jev request routing with server-managed credentials
+# Decision request routing with server-managed credentials
 CONDUCTOR_SERVER_URL=http://localhost:8080/api python -m examples.agentic_workflows.ai_decision_routing
 
 # Automated multi-turn chat (no interaction needed)
@@ -43,6 +43,14 @@ python examples/agentic_workflows/function_calling_example.py
 ```
 
 ## Key Patterns
+
+### AI decision routing contract (pending server support)
+
+The SDK emits one `AI_DECISION` task with `model`, `state`, `instructions`, and `choices` in `inputParameters`. Each choice has a `description` and a `tasks` list of serialized workflow tasks.
+
+The server compiles the decision and switch before resolving branch references, runs only the selected branch, and exposes its final task's `output.result` as the original task's `output.result`. If that task has no `result` field, use its full output. Preserve the decision's `model`, `answers`, `usage`, `latencyMs`, optional `requestId`, and `selectedCase` alongside `result`.
+
+Require nonempty state and instructions, 2 to 255 choices, and a nonempty task list per choice. Propagate branch failures. No SDK-generated switch or result collector is needed.
 
 ### Passing dynamic messages to LLM_CHAT_COMPLETE
 
