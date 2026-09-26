@@ -40,7 +40,7 @@ class AgentConfigSerializer:
 
         if isinstance(agent, AgentDef):
             agent = _resolve_agent(agent)
-        if getattr(agent, "kind", None) in ("decision", "jev"):
+        if getattr(agent, "kind", None) == "decision":
             if agent.tools or agent.agents or agent.memory or agent.guardrails or agent.output_type:
                 raise ValueError(
                     "Decision agents cannot contain chat tools, agents, memory, output schemas or guardrails"

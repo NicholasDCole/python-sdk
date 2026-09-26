@@ -1,18 +1,15 @@
 from typing import Any, Dict, Optional
 
-from conductor.client.workflow.task.task import (
-    TaskInterface,
-    get_task_interface_list_as_workflow_task_list,
-)
+from conductor.client.workflow.task.task import TaskInterface
 from conductor.client.workflow.task.task_type import TaskType
 
 
 class AiDecisionTask(TaskInterface):
-    """Describe a model decision and its branches for server-side routing.
+    """Run one choice decision using server-managed inference credentials.
 
-    Each choice contains a description and a list of SDK tasks. The server
-    constructs the decision and switch and exposes the selected branch result
-    through output("result"). Requires server support for this routing contract.
+    The server returns the structured decision and ``selectedCase``. Compose
+    this task with :class:`SwitchTask` in the workflow definition to run the
+    selected branch.
     """
 
     def __init__(
@@ -20,10 +17,9 @@ class AiDecisionTask(TaskInterface):
         task_ref_name: str,
         model: str,
         state: str,
-        instructions: str,
-        choices: Dict[str, Any],
-        *,
+        questions: Dict[str, Any],
         task_name: Optional[str] = None,
+        *,
         provider: Optional[str] = None,
     ) -> None:
         super().__init__(
@@ -34,13 +30,6 @@ class AiDecisionTask(TaskInterface):
                 "model": model,
                 **({"provider": provider} if provider is not None else {}),
                 "state": state,
-                "instructions": instructions,
-                "choices": {
-                    key: {
-                        "description": choice["description"],
-                        "tasks": get_task_interface_list_as_workflow_task_list(*choice["tasks"]),
-                    }
-                    for key, choice in choices.items()
-                },
+                "questions": questions,
             },
         )

@@ -293,7 +293,6 @@ _NON_TOOL_TASK_TYPES = frozenset(
     {
         "LLM_CHAT_COMPLETE",
         "DECISION_AGENT",
-        "JEV_AGENT",
         "SWITCH",
         "DO_WHILE",
         "INLINE",
@@ -442,7 +441,7 @@ def _task_events(task: Any, execution_id: str) -> Iterator[AgentEvent]:
     task_status = str(getattr(task, "status", "") or "").upper()
     output_data = getattr(task, "output_data", None) or {}
 
-    if task_type in ("DECISION_AGENT", "JEV_AGENT") and task_status == "COMPLETED":
+    if task_type == "DECISION_AGENT" and task_status == "COMPLETED":
         yield AgentEvent(
             type=EventType.DECISION,
             content=task_ref,
@@ -2246,11 +2245,7 @@ class AgentRuntime:
         def _collect(a: Agent) -> None:
             if not isinstance(a, Agent):
                 return
-            if (
-                a.model
-                and a.model not in seen
-                and getattr(a, "kind", None) not in ("decision", "jev")
-            ):
+            if a.model and a.model not in seen and getattr(a, "kind", None) != "decision":
                 seen.add(a.model)
             for sub in a.agents:
                 _collect(sub)
@@ -2331,7 +2326,7 @@ class AgentRuntime:
         Args:
             agent: The Agent or AgentDef to compile.
             prompt: Optional input to include in the compilation request.
-            context: Optional run context, including dynamic Jev questions.
+            context: Optional run context, including dynamic Decision questions.
 
         Returns:
             The raw server response dict with ``workflowDef`` and
@@ -3789,7 +3784,7 @@ class AgentRuntime:
             return None
 
         return AgentEvent(
-            type="decision" if event_type == "jev" else event_type,
+            type=event_type,
             content=data.get("content"),
             tool_name=data.get("toolName"),
             args=data.get("args"),

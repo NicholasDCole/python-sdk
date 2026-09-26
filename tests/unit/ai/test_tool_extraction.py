@@ -496,6 +496,7 @@ class TestEvalRunnerAgainstAPolledRun:
         failed = {c.check for case in suite.cases for c in case.checks if not c.passed}
         assert failed == {"tool_not_used:lookup_order", "no_handoff_to:billing"}
 
+
 # ── Agent-internal workers, and the tools that look like them ───────────
 
 
@@ -590,7 +591,7 @@ class TestFrameworkExecutionExtraction:
 
 
 @pytest.mark.parametrize("status", ["COMPLETED", "IN_PROGRESS", "FAILED"])
-def test_jev_is_inference_not_a_tool(runtime, status):
+def test_decision_is_inference_not_a_tool(runtime, status):
     output = {
         "model": "jev-1.13",
         "answers": {"department": {"type": "choice", "choice": "billing"}},
@@ -599,9 +600,9 @@ def test_jev_is_inference_not_a_tool(runtime, status):
         "requestId": "request-1",
     }
     task = FakeTask(
-        task_type="JEV_AGENT",
-        task_def_name="JEV_AGENT",
-        reference_task_name="support_jev",
+        task_type="DECISION_AGENT",
+        task_def_name="DECISION_AGENT",
+        reference_task_name="support_decision",
         output_data=output,
         status=status,
     )
@@ -611,10 +612,14 @@ def test_jev_is_inference_not_a_tool(runtime, status):
     assert not any(e.type in (EventType.TOOL_CALL, EventType.TOOL_RESULT) for e in events)
     if status == "COMPLETED":
         sse = runtime._sse_to_agent_event(
-            {"event": "jev", "data": {"content": "support_jev", "result": output}}, "wf-1"
+            {
+                "event": "decision",
+                "data": {"content": "support_decision", "result": output},
+            },
+            "wf-1",
         )
         assert events[0] == sse
-        assert events[0].type == EventType.JEV
+        assert events[0].type == EventType.DECISION
         assert events[0].result == output
     elif status == "FAILED":
         assert any(e.type == EventType.ERROR for e in events)

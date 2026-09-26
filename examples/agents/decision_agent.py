@@ -1,4 +1,4 @@
-"""Compile a Jev agent. Pass --run for inference. Configure credentials on Conductor."""
+"""Compile a Decision agent. Pass --run for inference. Configure credentials on Conductor."""
 
 import argparse
 import json
@@ -12,7 +12,7 @@ PROMPT = "The customer reports a duplicate charge on the latest invoice."
 
 def support_agent():
     return DecisionAgent(
-        name="jev_support_agent",
+        name="decision_support_agent",
         model="jev-1.13",
         questions={
             "department": {
@@ -30,7 +30,7 @@ def support_agent():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--run", action="store_true", help="Start live Jev inference")
+    parser.add_argument("--run", action="store_true", help="Start live Decision inference")
     args = parser.parse_args()
     config = Configuration(
         server_api_url=os.environ.get("CONDUCTOR_SERVER_URL", "http://localhost:8080/api")

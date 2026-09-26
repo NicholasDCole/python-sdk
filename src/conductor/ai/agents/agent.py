@@ -226,7 +226,7 @@ def _resolve_agent(obj: Any, parent_model: str = "") -> "Agent":
         return obj
     if isinstance(obj, AgentDef) or (callable(obj) and hasattr(obj, "_agent_def")):
         ad: AgentDef = obj if isinstance(obj, AgentDef) else obj._agent_def
-        if ad.kind in ("decision", "jev"):
+        if ad.kind == "decision":
             from conductor.ai.agents.decision import DecisionAgent
 
             if (
@@ -948,11 +948,10 @@ class Agent:
         """``True`` if this agent references an external workflow (no local definition).
 
         An agent with no model references an existing workflow, except a
-        ROUTER with a Jev selector, which is compiled locally by the server.
+        ROUTER with a Decision selector, which is compiled locally by the server.
         """
         return not self.model and not (
-            self.strategy == Strategy.ROUTER
-            and getattr(self.router, "kind", None) in ("decision", "jev")
+            self.strategy == Strategy.ROUTER and getattr(self.router, "kind", None) == "decision"
         )
 
     # ── Instance-method resolution ──────────────────────────────────────

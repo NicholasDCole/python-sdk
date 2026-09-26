@@ -1,19 +1,18 @@
 from conductor.client.http.api_client import ApiClient
 from conductor.client.workflow.task.ai_decision_task import AiDecisionTask
-from conductor.client.workflow.task.inline import InlineTask
-from conductor.client.workflow.task.switch_task import SwitchTask
 from conductor.client.workflow.task.task_type import TaskType
 from examples.agentic_workflows.ai_decision_routing import create_workflow
 
 
 def test_ai_decision_references_and_serialization():
-    choices = {
-        "billing": {"description": "Payments", "tasks": [InlineTask("billing", "'billing'")]},
-        "technical": {"description": "Errors", "tasks": [InlineTask("technical", "'technical'")]},
+    questions = {
+        "route": {
+            "type": "choice",
+            "instructions": "Choose a team.",
+            "choices": {"billing": "Payments", "technical": "Errors"},
+        }
     }
-    task = AiDecisionTask(
-        "decision", "jev-1.13", "${workflow.input.request}", "Choose a team.", choices
-    )
+    task = AiDecisionTask("decision", "jev-1.13", "${workflow.input.request}", questions)
     serialized = ApiClient().sanitize_for_serialization(task.to_workflow_task())
     assert task.task_type == TaskType.AI_DECISION
     assert serialized["type"] == "AI_DECISION"
@@ -22,77 +21,55 @@ def test_ai_decision_references_and_serialization():
     assert serialized["inputParameters"] == {
         "model": "jev-1.13",
         "state": "${workflow.input.request}",
-        "instructions": "Choose a team.",
-        "choices": {
-            key: {
-                "description": choice["description"],
-                "tasks": [
-                    ApiClient().sanitize_for_serialization(choice["tasks"][0].to_workflow_task())
-                ],
-            }
-            for key, choice in choices.items()
-        },
+        "questions": questions,
     }
     assert task.input("state") == "${decision.input.state}"
     assert task.output() == "${decision.output}"
-    assert task.output("answers") == "${decision.output.answers}"
-    assert task.output("result") == "${decision.output.result}"
+    assert task.output("answers.route.choice") == "${decision.output.answers.route.choice}"
     assert task.output("selectedCase") == "${decision.output.selectedCase}"
 
 
 def test_custom_name_and_input_reference():
     task = AiDecisionTask(
-        "decision", "jev-1.13", "request", "Choose a team.", {}, task_name="choose_team"
+        "decision",
+        "jev-1.13",
+        "request",
+        {},
+        "choose_team",
+        provider="typesafe",
     )
     task.input_parameter("state", "${workflow.input.request}")
+    task.input_parameter("questions", "${workflow.input.questions}")
     definition = task.to_workflow_task()
     assert definition.name == "choose_team"
     assert definition.input_parameters["state"] == "${workflow.input.request}"
+    assert definition.input_parameters["questions"] == "${workflow.input.questions}"
+    assert definition.input_parameters["provider"] == "typesafe"
 
 
-def test_routing_example_serializes_one_task_with_branches():
+def test_routing_example_preserves_decision_output():
     definition = ApiClient().sanitize_for_serialization(create_workflow(None).to_workflow_def())
-    assert len(definition["tasks"]) == 1
-    decision = definition["tasks"][0]
+    decision, switch, result = definition["tasks"]
     assert decision["type"] == "AI_DECISION"
     assert decision["inputParameters"]["state"] == "${workflow.input.request}"
-    assert decision["taskReferenceName"] == "route_request"
-    choices = decision["inputParameters"]["choices"]
-    assert set(choices) == {"billing", "technical"}
-    for team, choice in choices.items():
-        assert choice["description"]
-        tasks = choice["tasks"]
+    assert decision["taskReferenceName"] == "decision"
+    assert set(decision["inputParameters"]["questions"]["route"]["choices"]) == {
+        "billing",
+        "technical",
+    }
+    assert switch["type"] == "SWITCH"
+    assert switch["evaluatorType"] == "value-param"
+    assert switch["inputParameters"]["switchCaseValue"] == "${decision.output.selectedCase}"
+    assert set(switch["decisionCases"]) == {"billing", "technical"}
+    for team, tasks in switch["decisionCases"].items():
         assert len(tasks) == 1
         assert tasks[0]["type"] == "INLINE"
         assert tasks[0]["taskReferenceName"] == f"handle_{team}"
         assert tasks[0]["inputParameters"]["request"] == "${workflow.input.request}"
+    assert result["type"] == "INLINE"
+    assert result["inputParameters"]["billing"] == "${handle_billing.output.result}"
+    assert result["inputParameters"]["technical"] == "${handle_technical.output.result}"
     assert definition["outputParameters"] == {
-        "result": "${route_request.output.result}",
+        "decision": "${decision.output}",
+        "result": "${selected_result.output.result}",
     }
-
-
-def test_nested_branch_serialization_preserves_task_references():
-    branch = SwitchTask("nested", "${workflow.input.priority}")
-    branch.switch_case(
-        "high", [InlineTask("urgent", "$.request", {"request": "${workflow.input.request}"})]
-    )
-    task = AiDecisionTask(
-        "route",
-        "jev-1.13",
-        "request",
-        "Choose a team.",
-        {
-            "billing": {"description": "Payments", "tasks": [branch]},
-            "technical": {
-                "description": "Errors",
-                "tasks": [InlineTask("technical", "'technical'")],
-            },
-        },
-    )
-    serialized = ApiClient().sanitize_for_serialization(task.to_workflow_task())
-    nested = serialized["inputParameters"]["choices"]["billing"]["tasks"][0]
-    assert nested["type"] == "SWITCH"
-    assert nested["inputParameters"]["switchCaseValue"] == "${workflow.input.priority}"
-    urgent = nested["decisionCases"]["high"][0]
-    assert urgent["taskReferenceName"] == "urgent"
-    assert urgent["inputParameters"]["request"] == "${workflow.input.request}"

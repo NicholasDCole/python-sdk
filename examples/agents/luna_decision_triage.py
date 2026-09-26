@@ -1,6 +1,7 @@
-"""Luna-6 selects one of ten Jev specialists using server-side routing.
+"""A Luna-6 chat router selects one of ten Decision specialists.
 
-Pass --model INTEGRATION/luna-6. Compile by default, --run for inference.
+Unlike a Decision router, this example requires a parent chat model. Pass
+--model INTEGRATION/luna-6. Compile by default, --run for inference.
 """
 
 import argparse
@@ -9,7 +10,7 @@ import os
 
 from conductor.ai.agents import Agent, AgentRuntime, Strategy
 from conductor.client.configuration.configuration import Configuration
-from jev_specialists import SPECIALTIES, specialists
+from decision_specialists import SPECIALTIES, specialists
 
 
 def triage_agent(model):
@@ -18,11 +19,11 @@ def triage_agent(model):
         f"{agent.name}: {SPECIALTIES[name][1]}" for name, agent in candidates.items()
     )
     return Agent(
-        name="luna_jev_triage",
+        name="luna_decision_triage",
         model=model,
         strategy=Strategy.ROUTER,
         router=Agent(
-            name="luna_jev_selector",
+            name="luna_decision_selector",
             model=model,
             instructions=f"Select exactly one specialist for the request. Return only its agent name.\n{descriptions}",
         ),

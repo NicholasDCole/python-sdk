@@ -3,7 +3,7 @@ import asyncio
 
 import pytest
 
-from conductor.ai.agents import AgentDef, AgentRuntime, JevAgent
+from conductor.ai.agents import AgentDef, AgentRuntime, DecisionAgent
 from conductor.ai.agents.config_serializer import AgentConfigSerializer
 from conductor.ai.agents.runtime.config import AgentConfig
 
@@ -21,7 +21,7 @@ def runtime():
 def test_agent_def_and_convenience_class_serialize_identically(runtime):
 
     questions = QUESTIONS
-    definition = AgentDef(name="ready", kind="jev", model="jev-1.13", questions=questions)
+    definition = AgentDef(name="ready", kind="decision", model="jev-1.13", questions=questions)
     expected = {
         "name": "ready",
         "kind": "decision",
@@ -30,7 +30,9 @@ def test_agent_def_and_convenience_class_serialize_identically(runtime):
     }
     assert AgentConfigSerializer().serialize(definition) == expected
     assert (
-        AgentConfigSerializer().serialize(JevAgent("ready", model="jev-1.13", questions=questions))
+        AgentConfigSerializer().serialize(
+            DecisionAgent("ready", model="jev-1.13", questions=questions)
+        )
         == expected
     )
     runtime.plan(definition, "Ready to ship")
@@ -38,13 +40,50 @@ def test_agent_def_and_convenience_class_serialize_identically(runtime):
         {"agentConfig": expected, "prompt": "Ready to ship"}
     )
     runtime._agent_client.start_agent.assert_not_called()
-    runtime._ensure_models_for_agent(JevAgent("ready", model="jev-1.13"))
+    runtime._ensure_models_for_agent(DecisionAgent("ready", model="jev-1.13"))
+
+
+def test_decision_agent_serializes_provider_and_metadata():
+    expected = {
+        "name": "ready",
+        "kind": "decision",
+        "model": "jev-1.13",
+        "provider": "typesafe",
+        "questions": QUESTIONS,
+        "metadata": {"owner": "support"},
+    }
+    serializer = AgentConfigSerializer()
+    assert (
+        serializer.serialize(
+            DecisionAgent(
+                "ready",
+                model="jev-1.13",
+                provider="typesafe",
+                questions=QUESTIONS,
+                metadata={"owner": "support"},
+            )
+        )
+        == expected
+    )
+    assert (
+        serializer.serialize(
+            AgentDef(
+                name="ready",
+                kind="decision",
+                model="jev-1.13",
+                provider="typesafe",
+                questions=QUESTIONS,
+                metadata={"owner": "support"},
+            )
+        )
+        == expected
+    )
 
 
 @pytest.mark.parametrize("status", ["COMPLETED", "FAILED", "TIMED_OUT", "TERMINATED"])
 def test_start_and_poll_preserves_structured_result_and_failure_reason(runtime, status):
 
-    definition = AgentDef(name="ready", kind="jev", model="jev-1.13")
+    definition = AgentDef(name="ready", kind="decision", model="jev-1.13")
     raw = {
         "model": "jev-1.13",
         "answers": {"ready": {"type": "boolean", "probability": 0.8}},
@@ -81,7 +120,7 @@ def test_start_and_poll_preserves_structured_result_and_failure_reason(runtime, 
 
 def test_async_start_and_dynamic_compile(runtime):
 
-    definition = AgentDef(name="ready", kind="jev", model="jev-1.13")
+    definition = AgentDef(name="ready", kind="decision", model="jev-1.13")
     context = {"questions": QUESTIONS}
     runtime.plan(definition, "Ready?", context=context)
     assert (
@@ -103,13 +142,13 @@ def test_async_start_and_dynamic_compile(runtime):
     )
 
 
-def test_nested_jev_example_routes_to_named_agents(monkeypatch):
+def test_nested_decision_example_routes_to_named_agents(monkeypatch):
     import runpy
     from pathlib import Path
 
     examples = Path(__file__).resolve().parents[3] / "examples" / "agents"
     monkeypatch.syspath_prepend(str(examples))
-    nested = runpy.run_path(str(examples / "jev_nested_triage.py"))["triage_agent"]()
+    nested = runpy.run_path(str(examples / "decision_nested_triage.py"))["triage_agent"]()
     serializer = AgentConfigSerializer()
     config = serializer.serialize(nested)
     assert config["external"] is False
@@ -121,7 +160,9 @@ def test_nested_jev_example_routes_to_named_agents(monkeypatch):
         assert set(team["router"]["questions"]["agent"]["choices"]) == {
             child["name"] for child in team["agents"]
         }
-    luna = runpy.run_path(str(examples / "luna_jev_triage.py"))["triage_agent"]("configured/luna-6")
+    luna = runpy.run_path(str(examples / "luna_decision_triage.py"))["triage_agent"](
+        "configured/luna-6"
+    )
     config = serializer.serialize(luna)
     assert config["router"]["model"] == "configured/luna-6"
     assert len(config["agents"]) == 10

@@ -1,6 +1,6 @@
-"""Three levels: Jev department selector, Jev specialist selector, Jev specialist.
+"""Three levels of Decision selectors and specialists.
 
-Requires server support for Jev routers. Compile by default, --run for inference.
+Requires server support for Decision routers. Compile by default, --run for inference.
 """
 
 import argparse
@@ -9,7 +9,7 @@ import os
 
 from conductor.ai.agents import Agent, AgentRuntime, DecisionAgent, Strategy
 from conductor.client.configuration.configuration import Configuration
-from jev_specialists import SPECIALTIES, specialists
+from decision_specialists import SPECIALTIES, specialists
 
 PROMPT = "Our latest invoice has two settled charges with different transaction IDs for the same purchase."
 
@@ -44,18 +44,18 @@ def triage_agent():
         }
         departments.append(
             routing_team(
-                f"jev_{department}_team",
+                f"decision_{department}_team",
                 list(members.values()),
                 {agent.name: SPECIALTIES[name][1] for name, agent in members.items()},
             )
         )
     return routing_team(
-        "jev_nested_triage",
+        "decision_nested_triage",
         departments,
         {
-            "jev_billing_team": "Charges, refunds and subscriptions",
-            "jev_technical_team": "API errors, outages, integrations and setup",
-            "jev_account_team": "Access, security and privacy",
+            "decision_billing_team": "Charges, refunds and subscriptions",
+            "decision_technical_team": "API errors, outages, integrations and setup",
+            "decision_account_team": "Access, security and privacy",
         },
     )
 

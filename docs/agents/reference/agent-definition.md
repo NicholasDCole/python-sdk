@@ -15,6 +15,9 @@ maintained in [api-reference.md](../api-reference.md) and
 
 Use `DecisionAgent(name, model="jev-1.13", questions=questions)` or
 `AgentDef(name=name, kind="decision", model="jev-1.13", questions=questions)`.
+Pass `provider="typesafe"` (or another configured provider) to override the
+server's default decision provider. Arbitrary agent metadata may be supplied with
+`metadata={...}`.
 Questions are dictionaries with `instructions` and a `type`:
 `choice` uses a `choices` map, `score` uses an ordered `scale`, and `boolean`
 returns a probability. Omit questions to supply `context={"questions": questions}`.
@@ -25,7 +28,7 @@ to run. Call `handle.join()` and check `result.is_success` or `result.error`.
 and optional `requestId`. Credentials and inference stay on Conductor.
 No chat model or Python worker is needed.
 
-[Example](../../../examples/agents/jev_agent.py)
+[Example](../../../examples/agents/decision_agent.py)
 
 For server-side Decision routing, use `Agent(strategy="router", router=selector,
 agents=children)`. The Decision selector must have one fixed choice question whose

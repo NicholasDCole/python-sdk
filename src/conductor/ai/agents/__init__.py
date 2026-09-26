@@ -51,7 +51,6 @@ from conductor.ai.agents.code_executor import (
     ServerlessCodeExecutor,
 )
 from conductor.ai.agents.decision import DecisionAgent
-from conductor.ai.agents.jev import JevAgent
 
 # Exceptions
 from conductor.ai.agents.exceptions import (
@@ -235,7 +234,6 @@ from conductor.ai.agents.tracing import is_tracing_enabled
 
 __all__ = [
     "DecisionAgent",
-    "JevAgent",
     # OpenAI Agents SDK compatibility
     "Runner",
     "RunResult",

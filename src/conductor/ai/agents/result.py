@@ -712,7 +712,6 @@ class EventType(str, Enum):
 
     THINKING = "thinking"
     DECISION = "decision"
-    JEV = "decision"  # Compatibility alias
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
     HANDOFF = "handoff"

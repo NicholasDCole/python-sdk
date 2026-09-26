@@ -1,4 +1,4 @@
-"""Ten Jev specialists used by the routing examples."""
+"""Ten Decision specialists used by the routing examples."""
 
 from conductor.ai.agents import DecisionAgent
 
@@ -99,7 +99,7 @@ SPECIALTIES = {
 def specialists():
     return {
         name: DecisionAgent(
-            name=f"jev_{name}",
+            name=f"decision_{name}",
             model="jev-1.13",
             questions={
                 "action": {
