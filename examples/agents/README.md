@@ -27,10 +27,12 @@ Framework-specific examples are in [ADK](adk/README.md),
 [LangGraph](langgraph/README.md), and [OpenAI Agents SDK](openai/README.md).
 Review tool side effects before using real credentials.
 
-Decision: [decision_agent.py](decision_agent.py) compiles by default. Pass `--run` for inference.
+Decision: [decision_agent.py](decision_agent.py) uses a `DecisionAgent` only as a
+router selector, with normal chat agents as executable children. It compiles by
+default; pass `--run` for inference.
 
-- `decision_nested_triage.py`: Decision department selection, Decision specialist selection, then a Decision specialist.
-- `luna_decision_triage.py --model INTEGRATION/luna-6`: Luna selects one of ten Decision specialists.
+`decision_tool.py` shows the other agent pattern: a normal chat agent calls
+Decision inference as a server-side tool. Run it directly; no tool worker is needed.
 
-Both compile by default. Pass `--run` for inference. These require the server's
-Decision router support and structured output for single-turn routers without synthesis.
+For direct use in a traditional workflow, see
+[`ai_decision_routing.py`](../agentic_workflows/ai_decision_routing.py).
