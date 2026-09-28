@@ -29,4 +29,5 @@ question whose keys match the executable child-agent names.
 The parent router needs no chat model or Python worker. The selected child is a
 normal executable agent and may use its own chat model and tools. Routing runs
 one child and preserves its result. For structured decision inference without a
-child agent, use an `AiDecisionTask` in a workflow or a decision tool.
+child agent, use a `SwitchTask` with `evaluator_type="decision"` in a workflow or
+a decision tool.

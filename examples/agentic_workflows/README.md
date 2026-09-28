@@ -6,7 +6,8 @@ Chat examples use inline ChatMessage objects for system prompts. No named prompt
 
 ## Prerequisites
 
-The AI decision example requires server-side `AI_DECISION` support and Decision credentials. No chat model or Python worker is needed. The other examples require:
+The decision routing example requires server-side decision-evaluator support and
+Decision credentials. No chat model or Python worker is needed. The other examples require:
 
 - Conductor server with AI/LLM support running (e.g., `http://localhost:7001/api`)
 - LLM provider named `openai` configured with a valid API key
@@ -16,7 +17,7 @@ The AI decision example requires server-side `AI_DECISION` support and Decision 
 
 | Example | Description | Interactive? | Pattern |
 |---------|-------------|:------------:|---------|
-| [ai_decision_routing.py](ai_decision_routing.py) | Route requests and return the selected branch's result | No | AI_DECISION + SwitchTask + InlineTask |
+| [ai_decision_routing.py](ai_decision_routing.py) | Route requests and return the selected branch's result | No | Decision-backed SwitchTask + InlineTask |
 | [llm_chat.py](llm_chat.py) | Automated multi-turn science Q&A between two LLMs | No | LoopTask + LLM_CHAT_COMPLETE + worker for history |
 | [llm_chat_human_in_loop.py](llm_chat_human_in_loop.py) | Interactive chat with WAIT task pauses for user input | Yes | LoopTask + WaitTask + LLM_CHAT_COMPLETE |
 | [multiagent_chat.py](multiagent_chat.py) | Multi-agent debate with moderator routing between panelists | No | LoopTask + SwitchTask + SetVariableTask + JavaScript routing |
@@ -46,14 +47,14 @@ python examples/agentic_workflows/function_calling_example.py
 
 ### AI decision routing
 
-`AiDecisionTask` emits `model`, optional `provider`, `state`, and exactly one
-choice question in `questions`. The server performs inference and returns the
-structured decision plus `selectedCase`.
+Use one `SwitchTask` with `evaluator_type="decision"`. Its input parameters contain
+`model`, optional `provider`, `state`, and exactly one choice question in
+`questions`; its `expression` names that question. The choice keys must match the
+task's `decisionCases` keys. The server performs inference, writes the full
+response and `selectedCase` to the SWITCH output, and runs the selected branch.
 
-Add an explicit `SwitchTask` using `decision.output("selectedCase")`, define the
-branch tasks on that switch, and collect the selected branch result separately.
-Agent definitions with a `DecisionAgent` router are different: the server compiles
-their selector, switch, and selected child workflow automatically.
+Agent definitions with a `DecisionAgent` router compile the selector and selected
+child workflow into this same decision-backed SWITCH shape automatically.
 
 ### Passing dynamic messages to LLM_CHAT_COMPLETE
 

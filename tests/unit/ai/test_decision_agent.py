@@ -81,6 +81,7 @@ def test_decision_router_example_uses_decision_only_as_selector(monkeypatch):
 def test_decision_tool_example_serializes_as_server_side_tool(monkeypatch):
     examples = Path(__file__).resolve().parents[3] / "examples" / "agents"
     monkeypatch.setenv("CONDUCTOR_AGENT_LLM_MODEL", "configured/chat")
+    monkeypatch.delenv("CONDUCTOR_DECISION_PROVIDER", raising=False)
     agent = runpy.run_path(str(examples / "decision_tool.py"))["support_agent"]
 
     config = AgentConfigSerializer().serialize(agent)

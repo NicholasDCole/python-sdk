@@ -1,30 +1,56 @@
 from copy import deepcopy
 from enum import Enum
-from typing import List
+from typing import Any, Dict, List, Optional, Union
 
 from typing_extensions import Self
 
 from conductor.client.http.models.workflow_task import WorkflowTask
-from conductor.client.workflow.task.task import TaskInterface, get_task_interface_list_as_workflow_task_list
+from conductor.client.workflow.task.task import (
+    TaskInterface,
+    get_task_interface_list_as_workflow_task_list,
+)
 from conductor.client.workflow.task.task_type import TaskType
 
 
 class EvaluatorType(str, Enum):
-    JAVASCRIPT = "javascript",
-    ECMASCRIPT = "graaljs",
+    JAVASCRIPT = ("javascript",)
+    ECMASCRIPT = ("graaljs",)
     VALUE_PARAM = "value-param"
+    DECISION = "decision"
 
 
 class SwitchTask(TaskInterface):
-    def __init__(self, task_ref_name: str, case_expression: str, use_javascript: bool = False) -> Self:
+    def __init__(
+        self,
+        task_ref_name: str,
+        case_expression: str,
+        use_javascript: bool = False,
+        *,
+        evaluator_type: Optional[Union[EvaluatorType, str]] = None,
+        input_parameters: Optional[Dict[str, Any]] = None,
+        retry_count: Optional[int] = None,
+        retry_logic: Optional[str] = None,
+        retry_delay_seconds: Optional[int] = None,
+        backoff_scale_factor: Optional[int] = None,
+        max_retry_delay_seconds: Optional[int] = None,
+    ) -> Self:
         super().__init__(
             task_reference_name=task_ref_name,
             task_type=TaskType.SWITCH,
+            input_parameters=input_parameters,
         )
+        if use_javascript and evaluator_type is not None:
+            raise ValueError("use_javascript and evaluator_type cannot both be set")
         self._default_case = None
         self._decision_cases = {}
         self._expression = deepcopy(case_expression)
         self._use_javascript = deepcopy(use_javascript)
+        self._switch_evaluator_type = deepcopy(evaluator_type)
+        self._retry_count = deepcopy(retry_count)
+        self._retry_logic = deepcopy(retry_logic)
+        self._retry_delay_seconds = deepcopy(retry_delay_seconds)
+        self._backoff_scale_factor = deepcopy(backoff_scale_factor)
+        self._max_retry_delay_seconds = deepcopy(max_retry_delay_seconds)
 
     def switch_case(self, case_name: str, tasks: List[TaskInterface]) -> Self:
         if isinstance(tasks, List):
@@ -42,7 +68,14 @@ class SwitchTask(TaskInterface):
 
     def to_workflow_task(self) -> WorkflowTask:
         workflow = super().to_workflow_task()
-        if self._use_javascript:
+        if self._switch_evaluator_type is not None:
+            workflow.evaluator_type = (
+                self._switch_evaluator_type.value
+                if isinstance(self._switch_evaluator_type, EvaluatorType)
+                else self._switch_evaluator_type
+            )
+            workflow.expression = self._expression
+        elif self._use_javascript:
             workflow.evaluator_type = EvaluatorType.ECMASCRIPT
             workflow.expression = self._expression
         else:
@@ -56,7 +89,10 @@ class SwitchTask(TaskInterface):
             )
         if self._default_case is None:
             self._default_case = []
-        workflow.default_case = get_task_interface_list_as_workflow_task_list(
-            *self._default_case
-        )
+        workflow.default_case = get_task_interface_list_as_workflow_task_list(*self._default_case)
+        workflow.retry_count = self._retry_count
+        workflow.retry_logic = self._retry_logic
+        workflow.retry_delay_seconds = self._retry_delay_seconds
+        workflow.backoff_scale_factor = self._backoff_scale_factor
+        workflow.max_retry_delay_seconds = self._max_retry_delay_seconds
         return workflow

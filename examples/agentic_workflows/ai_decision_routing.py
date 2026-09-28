@@ -1,6 +1,6 @@
-"""Route a request with AI_DECISION, SWITCH, and an inline branch.
+"""Route a request with one decision-backed SWITCH and an inline branch.
 
-Requires server-side AI_DECISION support and inference credentials. No worker needed.
+The server evaluates the SWITCH and selects its branch. No Python worker is needed.
 Run: CONDUCTOR_SERVER_URL=http://localhost:8080/api python -m examples.agentic_workflows.ai_decision_routing
 """
 
@@ -11,28 +11,36 @@ import time
 from conductor.client.configuration.configuration import Configuration
 from conductor.client.orkes_clients import OrkesClients
 from conductor.client.workflow.conductor_workflow import ConductorWorkflow
-from conductor.client.workflow.task.ai_decision_task import AiDecisionTask
 from conductor.client.workflow.task.inline import InlineTask
-from conductor.client.workflow.task.switch_task import SwitchTask
+from conductor.client.workflow.task.switch_task import EvaluatorType, SwitchTask
 
 
 def create_workflow(executor, model="jev-1.13", provider=None) -> ConductorWorkflow:
     workflow = ConductorWorkflow(executor=executor, name="ai_decision_routing", version=1)
-    decision = AiDecisionTask(
-        task_ref_name="decision",
-        model=model,
-        provider=provider,
-        state=workflow.input("request"),
-        questions={
-            "route": {
-                "type": "choice",
-                "instructions": "Choose the team best suited to handle this request.",
-                "choices": {
-                    "billing": "Payments, invoices, refunds, or subscriptions.",
-                    "technical": "Errors, outages, or product troubleshooting.",
-                },
-            }
+    decision = SwitchTask(
+        task_ref_name="route_request",
+        case_expression="route",
+        evaluator_type=EvaluatorType.DECISION,
+        input_parameters={
+            "model": model,
+            **({"provider": provider} if provider is not None else {}),
+            "state": workflow.input("request"),
+            "questions": {
+                "route": {
+                    "type": "choice",
+                    "instructions": "Choose the team best suited to handle this request.",
+                    "choices": {
+                        "billing": "Payments, invoices, refunds, or subscriptions.",
+                        "technical": "Errors, outages, or product troubleshooting.",
+                    },
+                }
+            },
         },
+        retry_count=3,
+        retry_logic="EXPONENTIAL_BACKOFF",
+        retry_delay_seconds=1,
+        backoff_scale_factor=2,
+        max_retry_delay_seconds=5,
     )
     billing = InlineTask(
         "handle_billing",
@@ -46,9 +54,8 @@ def create_workflow(executor, model="jev-1.13", provider=None) -> ConductorWorkf
         'message: "Collect error logs and steps to reproduce.", request: $.request})',
         bindings={"request": workflow.input("request")},
     )
-    route = SwitchTask("route_request", decision.output("selectedCase"))
-    route.switch_case("billing", [billing])
-    route.switch_case("technical", [technical])
+    decision.switch_case("billing", [billing])
+    decision.switch_case("technical", [technical])
     result = InlineTask(
         "selected_result",
         script="$.billing || $.technical",
@@ -57,10 +64,14 @@ def create_workflow(executor, model="jev-1.13", provider=None) -> ConductorWorkf
             "technical": technical.output("result"),
         },
     )
-    workflow >> decision >> route >> result
+    workflow >> decision >> result
     workflow.output_parameters(
         {
-            "decision": decision.output(),
+            "selectedCase": decision.output("selectedCase"),
+            "answers": decision.output("answers"),
+            "usage": decision.output("usage"),
+            "cost": decision.output("usage.cost"),
+            "latencyMs": decision.output("latencyMs"),
             "result": result.output("result"),
         }
     )

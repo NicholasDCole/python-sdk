@@ -1,9 +1,32 @@
-"""Use Decision inference as a tool inside a normal chat agent."""
+"""Use Decision inference as a tool inside a normal chat agent.
+
+The server executes the tool as a branchless decision-backed SWITCH, so no Python
+worker is needed.
+"""
 
 import os
 
 from conductor.ai.agents import Agent, AgentRuntime, ToolDef
 from conductor.client.configuration.configuration import Configuration
+
+decision_config = {
+    "model": "jev-1.13",
+    **(
+        {"provider": os.environ["CONDUCTOR_DECISION_PROVIDER"]}
+        if "CONDUCTOR_DECISION_PROVIDER" in os.environ
+        else {}
+    ),
+    "questions": {
+        "department": {
+            "type": "choice",
+            "instructions": "Choose the correct support department.",
+            "choices": {
+                "billing": "Payments and invoices",
+                "technical": "Product errors and troubleshooting",
+            },
+        }
+    },
+}
 
 classify_request = ToolDef(
     name="classify_request",
@@ -14,19 +37,7 @@ classify_request = ToolDef(
         "properties": {"state": {"type": "string"}},
         "required": ["state"],
     },
-    config={
-        "model": "jev-1.13",
-        "questions": {
-            "department": {
-                "type": "choice",
-                "instructions": "Choose the correct support department.",
-                "choices": {
-                    "billing": "Payments and invoices",
-                    "technical": "Product errors and troubleshooting",
-                },
-            }
-        },
-    },
+    config=decision_config,
 )
 
 support_agent = Agent(

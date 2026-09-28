@@ -1,4 +1,8 @@
-"""Route to a chat agent with a Decision selector. Pass --run for inference."""
+"""Route to one of two chat agents with a DecisionAgent selector.
+
+Deployment compiles the router into one decision-backed SWITCH. DecisionAgent is
+only the selector and is not deployed as a standalone agent. Pass --run for inference.
+"""
 
 import argparse
 import json
