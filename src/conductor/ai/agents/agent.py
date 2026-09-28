@@ -75,8 +75,6 @@ class AgentDef:
         name: Agent name (becomes the Conductor workflow name).
         model: LLM model in ``"provider/model"`` format.  Empty string
             means "inherit from parent agent at resolution time".
-        kind: Set to "decision" for a decision agent. Omit for chat agents.
-        questions: Fixed decision questions, or omit and supply context.questions at runtime.
         instructions: System prompt — a string or the decorated callable.
         tools: List of tools for the agent.
         guardrails: List of guardrails for the agent.
@@ -111,9 +109,6 @@ class AgentDef:
     credentials: List[Any] = field(default_factory=list)
     context_window_budget: Optional[int] = None
     prefill_tools: List[Any] = field(default_factory=list)
-    kind: Optional[str] = None
-    questions: Optional[Dict[str, Any]] = None
-    provider: Optional[str] = None
 
 
 # ── @agent decorator ────────────────────────────────────────────────────
@@ -226,33 +221,6 @@ def _resolve_agent(obj: Any, parent_model: str = "") -> "Agent":
         return obj
     if isinstance(obj, AgentDef) or (callable(obj) and hasattr(obj, "_agent_def")):
         ad: AgentDef = obj if isinstance(obj, AgentDef) else obj._agent_def
-        if ad.kind == "decision":
-            from conductor.ai.agents.decision import DecisionAgent
-
-            if (
-                ad.tools
-                or ad.agents
-                or ad.guardrails
-                or ad.instructions
-                or ad.func
-                or ad.local_code_execution
-                or ad.code_execution
-                or ad.cli_commands
-                or ad.credentials
-                or ad.prefill_tools
-                or ad.max_tokens is not None
-                or ad.temperature is not None
-            ):
-                raise ValueError("Decision AgentDef does not support chat configuration")
-            return DecisionAgent(
-                ad.name,
-                model=ad.model,
-                provider=ad.provider,
-                questions=ad.questions,
-                metadata=ad.metadata,
-            )
-        if ad.kind is not None:
-            raise ValueError(f"Unsupported agent kind: {ad.kind}")
         # Handle ClaudeCode: don't inherit parent model for claude-code agents
         if isinstance(ad.model, ClaudeCode):
             resolved_model = ad.model
@@ -530,8 +498,8 @@ class Agent:
             ``"handoff"``).  Valid values: ``handoff``, ``sequential``,
             ``parallel``, ``router``, ``round_robin``, ``random``, ``swarm``,
             ``manual``.
-        router: For ``strategy="router"``, an :class:`Agent` or callable that
-            selects which sub-agent runs each turn.
+        router: For ``strategy="router"``, an :class:`Agent`, callable, or
+            decision :class:`ToolDef` that selects which sub-agent runs each turn.
         output_type: A Pydantic model or dataclass for structured output.
         guardrails: List of :class:`Guardrail` instances for input/output validation.
         memory: Optional :class:`ConversationMemory` for session management.
@@ -589,7 +557,7 @@ class Agent:
         tools: Optional[List[Any]] = None,
         agents: Optional[List[Any]] = None,
         strategy: Union[str, Strategy] = Strategy.HANDOFF,
-        router: Optional[Union["Agent", Callable[..., Any]]] = None,
+        router: Optional[Any] = None,
         output_type: Optional[type] = None,
         guardrails: Optional[List[Any]] = None,
         memory: Optional[Any] = None,
@@ -948,11 +916,16 @@ class Agent:
         """``True`` if this agent references an external workflow (no local definition).
 
         An agent with no model references an existing workflow, except a
-        ROUTER with a Decision selector, which is compiled locally by the server.
+        ROUTER with a decision tool, which is compiled locally by the server.
         """
-        return not self.model and not (
-            self.strategy == Strategy.ROUTER and getattr(self.router, "kind", None) == "decision"
-        )
+        decision_router = False
+        if self.strategy == Strategy.ROUTER and self.router is not None:
+            from conductor.ai.agents.tool import ToolDef
+
+            decision_router = (
+                isinstance(self.router, ToolDef) and self.router.tool_type == "decision"
+            )
+        return not self.model and not decision_router
 
     # ── Instance-method resolution ──────────────────────────────────────
 

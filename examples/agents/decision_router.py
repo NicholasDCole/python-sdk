@@ -1,21 +1,22 @@
-"""Route to one of two chat agents with a DecisionAgent selector.
+"""Route to one of two chat agents with a decision tool.
 
-Deployment compiles the router into one decision-backed SWITCH. DecisionAgent is
-only the selector and is not deployed as a standalone agent. Pass --run for inference.
+When a decision ToolDef is supplied as ``router=``, deployment compiles it into
+one decision-backed SWITCH. It is a selector configuration, not a standalone
+agent, and needs no Python worker. Pass --run for inference.
 """
 
 import argparse
 import json
 import os
 
-from conductor.ai.agents import Agent, AgentRuntime, DecisionAgent, Strategy
+from conductor.ai.agents import Agent, AgentRuntime, Strategy, ToolDef
 from conductor.client.configuration.configuration import Configuration
 
 PROMPT = "The customer reports a duplicate charge on the latest invoice."
 CHAT_MODEL = os.getenv("CONDUCTOR_AGENT_LLM_MODEL", "openai/gpt-4o-mini")
 
 
-def support_agent():
+def support_router():
     billing = Agent(
         name="billing",
         model=CHAT_MODEL,
@@ -26,13 +27,18 @@ def support_agent():
         model=CHAT_MODEL,
         instructions="Help the customer troubleshoot product issues.",
     )
-    return Agent(
-        name="decision_support_router",
-        strategy=Strategy.ROUTER,
-        router=DecisionAgent(
-            name="support_selector",
-            model="jev-1.13",
-            questions={
+    selector = ToolDef(
+        name="support_selector",
+        description="Choose the support agent that should handle the request.",
+        tool_type="decision",
+        config={
+            "model": "jev-1.13",
+            **(
+                {"provider": os.environ["CONDUCTOR_DECISION_PROVIDER"]}
+                if "CONDUCTOR_DECISION_PROVIDER" in os.environ
+                else {}
+            ),
+            "questions": {
                 "agent": {
                     "type": "choice",
                     "instructions": "Choose the right support team.",
@@ -42,7 +48,12 @@ def support_agent():
                     },
                 }
             },
-        ),
+        },
+    )
+    return Agent(
+        name="decision_support_router",
+        strategy=Strategy.ROUTER,
+        router=selector,
         agents=[billing, technical],
         max_turns=1,
         synthesize=False,
@@ -57,7 +68,7 @@ def main():
         server_api_url=os.environ.get("CONDUCTOR_SERVER_URL", "http://localhost:8080/api")
     )
     with AgentRuntime(config) as runtime:
-        agent = support_agent()
+        agent = support_router()
         if not args.run:
             print(json.dumps(runtime.plan(agent, PROMPT), indent=2))
             return

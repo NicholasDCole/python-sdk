@@ -12,7 +12,7 @@ from conductor.ai.agents.agent import Agent
 from conductor.ai.agents.config_serializer import AgentConfigSerializer
 from conductor.ai.agents.guardrail import RegexGuardrail
 from conductor.ai.agents.termination import TextMentionTermination
-from conductor.ai.agents.tool import tool
+from conductor.ai.agents.tool import ToolDef, tool
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -51,15 +51,17 @@ def test_agent_schema_rejects_unknown_root_fields():
         jsonschema.validate({"name": "valid_name", "unknownField": True}, schema)
 
 
-def test_agent_schema_accepts_decision_definition():
-    from conductor.ai.agents import DecisionAgent
-
-    questions = {
-        "team": {"type": "choice", "instructions": "Choose", "choices": {"a": "A", "b": "B"}},
-        "priority": {"type": "score", "instructions": "Score", "scale": ["low", "high"]},
-        "ready": {"type": "boolean", "instructions": "Ready?"},
-    }
+def test_agent_schema_accepts_decision_tool_router():
+    questions = {"team": {"type": "choice", "choices": {"a": "A", "b": "B"}}}
     schema = json.loads(SCHEMA_PATH.read_text())
-    for fixed_questions in (questions, None):
-        agent = DecisionAgent("decision", model="jev-1.13", questions=fixed_questions)
-        jsonschema.validate(AgentConfigSerializer().serialize(agent), schema)
+    agent = Agent(
+        name="router",
+        strategy="router",
+        router=ToolDef(
+            name="selector",
+            tool_type="decision",
+            config={"model": "jev-1.13", "questions": questions},
+        ),
+        agents=[Agent(name="a", model="openai/gpt-4o-mini")],
+    )
+    jsonschema.validate(AgentConfigSerializer().serialize(agent), schema)

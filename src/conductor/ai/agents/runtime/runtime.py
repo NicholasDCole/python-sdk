@@ -292,7 +292,6 @@ _TOOL_TASK_TYPES = frozenset(
 _NON_TOOL_TASK_TYPES = frozenset(
     {
         "LLM_CHAT_COMPLETE",
-        "DECISION_AGENT",
         "SWITCH",
         "DO_WHILE",
         "INLINE",
@@ -441,7 +440,12 @@ def _task_events(task: Any, execution_id: str) -> Iterator[AgentEvent]:
     task_status = str(getattr(task, "status", "") or "").upper()
     output_data = getattr(task, "output_data", None) or {}
 
-    if task_type == "DECISION_AGENT" and task_status == "COMPLETED":
+    if (
+        task_type == "SWITCH"
+        and task_status == "COMPLETED"
+        and isinstance(output_data, dict)
+        and "answers" in output_data
+    ):
         yield AgentEvent(
             type=EventType.DECISION,
             content=task_ref,
@@ -2245,7 +2249,7 @@ class AgentRuntime:
         def _collect(a: Agent) -> None:
             if not isinstance(a, Agent):
                 return
-            if a.model and a.model not in seen and getattr(a, "kind", None) != "decision":
+            if a.model and a.model not in seen:
                 seen.add(a.model)
             for sub in a.agents:
                 _collect(sub)

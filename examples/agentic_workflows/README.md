@@ -53,8 +53,8 @@ Use one `SwitchTask` with `evaluator_type="decision"`. Its input parameters cont
 task's `decisionCases` keys. The server performs inference, writes the full
 response and `selectedCase` to the SWITCH output, and runs the selected branch.
 
-Agent definitions with a `DecisionAgent` router compile the selector and selected
-child workflow into this same decision-backed SWITCH shape automatically.
+Agent definitions with a decision `ToolDef` in `router=` compile the selector and
+selected child workflow into this same decision-backed SWITCH shape automatically.
 
 ### Passing dynamic messages to LLM_CHAT_COMPLETE
 

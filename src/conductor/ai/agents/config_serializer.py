@@ -40,20 +40,6 @@ class AgentConfigSerializer:
 
         if isinstance(agent, AgentDef):
             agent = _resolve_agent(agent)
-        if getattr(agent, "kind", None) == "decision":
-            if agent.tools or agent.agents or agent.memory or agent.guardrails or agent.output_type:
-                raise ValueError(
-                    "Decision agents cannot contain chat tools, agents, memory, output schemas or guardrails"
-                )
-            config = {"name": agent.name, "kind": "decision", "model": agent.model}
-            if getattr(agent, "provider", None) is not None:
-                config["provider"] = agent.provider
-            if agent.questions is not None:
-                config["questions"] = agent.questions
-            if agent.metadata:
-                config["metadata"] = agent.metadata
-            return config
-
         # Skill agents — emit the raw skill config so the server's
         # SkillNormalizer can compile sub-agents (e.g. gilfoyle, dinesh)
         # and tools (scripts, read_skill_file) into the workflow.
@@ -471,8 +457,26 @@ class AgentConfigSerializer:
     def _serialize_router(self, agent: "Agent") -> Any:
         """Serialize a router to either an AgentConfig or a WorkerRef."""
         from conductor.ai.agents.agent import Agent as AgentClass
+        from conductor.ai.agents.tool import ToolDef
 
         router = agent.router
+        if isinstance(router, ToolDef):
+            if router.tool_type != "decision":
+                raise ValueError("Only a decision ToolDef can be used as a router")
+            config = router.config
+            if not config.get("model"):
+                raise ValueError("Decision router tool config requires 'model'")
+            if not config.get("questions"):
+                raise ValueError("Decision router tool config requires 'questions'")
+            result = {
+                "name": router.name,
+                "kind": "decision",
+                "model": config["model"],
+                "questions": config["questions"],
+            }
+            if config.get("provider") is not None:
+                result["provider"] = config["provider"]
+            return result
         if isinstance(router, AgentClass) or (hasattr(router, "model") and router.model):
             return self._serialize_agent(router)
         elif callable(router):

@@ -591,7 +591,7 @@ class TestFrameworkExecutionExtraction:
 
 
 @pytest.mark.parametrize("status", ["COMPLETED", "IN_PROGRESS", "FAILED"])
-def test_decision_is_inference_not_a_tool(runtime, status):
+def test_decision_switch_is_inference_not_a_tool(runtime, status):
     output = {
         "model": "jev-1.13",
         "answers": {"department": {"type": "choice", "choice": "billing"}},
@@ -600,8 +600,8 @@ def test_decision_is_inference_not_a_tool(runtime, status):
         "requestId": "request-1",
     }
     task = FakeTask(
-        task_type="DECISION_AGENT",
-        task_def_name="DECISION_AGENT",
+        task_type="SWITCH",
+        task_def_name="SWITCH",
         reference_task_name="support_decision",
         output_data=output,
         status=status,
